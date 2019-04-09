@@ -23,44 +23,50 @@
 
                 <form>
 
-                    <!-- TODO show error alert with list of errors,
+                    <!-- show error alert with list of errors,
                          if there are errors in the form -->
+                    <div class="alert alert-danger" v-show="errors && errors.length > 0">
+                        <li v-for="error in errors">{{ error }}</li>
+                    </div>
 
                     <div class="form-group">
                         <!-- change label message to include name of activity -->
                         <label class="form-label" for="when">When did you {{ activity | lowercase }}?</label>
-                        <!-- TODO v-model to app data property -->
-                        <input id="when" class="form-control" type="date" >
+                        <!-- v-model to app data property -->
+                        <input id="when" class="form-control" type="date" v-model.lazy="when">
                     </div>
 
                     <div class="form-group">
                         <label class="form-label" for="howLong">How long did you practice for (in hours)?</label>
                         <!-- v-model to app data property -->
-                        <input id="howLong" class="form-control" v-model="howLong">
+                        <input id="howLong" class="form-control" v-model.number.lazy="howLong">
                     </div>
 
                     <div class="form-group">
                         <label class="form-label" for="type">What type?</label>
-                        <!-- TODO create a select. v-model type -->
-                        <!-- TODO create one option for each type  -->
+                        <!-- create a select. v-model type -->
+                        <!-- create one option for each type  -->
+                        <select class="form-control" v-model="type">
+                          <option v-for="type in types" v-bind:value="type">{{ type }}</option>
                         </select>
                     </div>
 
                     <div class="form-check-inline">
-                        <!-- TODO v-model, v-bind value -->
-                        <input id="v2" class="form-check-input" type="radio">
-                        <label class="form-check-label" for="v1">Traditional</label>
+                        <!-- v-model, v-bind value -->
+                        <input id="v2" class="form-check-input" type="radio" v-bind:value="traditional" v-model="digitalTraditional">
+
+                        <label class="form-check-label" for="v1">{{ traditional }}</label>
                     </div>
 
                     <div class="form-check-inline">
-                        <!-- TODO v-model, v-bind value -->
-                        <input id="v1" class="form-check-input" type="radio">
-                        <label class="form-check-label" for="v1">Digital</label>
+                        <!-- v-model, v-bind value -->
+                        <input id="v1" class="form-check-input" type="radio" v-bind:value="digital" v-model="digitalTraditional">
+                        <label class="form-check-label" for="v1">{{ digital }}</label>
                     </div>
 
                     <div>
-                        <!-- TODO v-on click event -->
-                        <button class="btn btn-primary mt-2" type="button" >Add record</button>
+                        <!-- v-on click event -->
+                        <button class="btn btn-primary mt-2" type="button" v-on:click="submit">Add record</button>
                     </div>
 
                 </form>
@@ -71,8 +77,8 @@
             <h2 class="card-header">Activity Record</h2>
 
             <div class="card-body">
-                <!-- TODO display the number of records  -->
-                <h3> TODO how many records?</h3>
+                <!-- display the number of records  -->
+                <h3> {{ activityRecords.length }} record(s)</h3>
 
                 <div id="records">
                     <table class="table">
@@ -82,7 +88,13 @@
                             <th>Type</th>
                             <th>Digital or traditional?</th>
                         </tr>
-                        <!-- TODO display one table row for each activityRecord  -->
+                        <!-- display one table row for each activityRecord  -->
+                        <tr v-for="record in activityRecords">
+                          <td>{{ record.when | shortDateFormat }}</td>
+                          <td>{{ record.howLong }}</td>
+                          <td>{{ record.type }}</td>
+                          <td>{{ record.digitalTraditional }}</td>
+                        </tr>
                     </table>
                 </div>
             </div>
@@ -93,11 +105,13 @@
             <h2 class="card-header">Summary</h2>
 
             <div class="card-body">
-                <!-- TODO use computed property to display total hours -->
-                <p>You have practiced a total of TODO hours, broken down as follows:</p>
+                <!-- use computed property to display total hours -->
+                <p>You have practiced a total of {{ totalHours }} hours, broken down as follows:</p>
 
-                <!-- TODO computed property to display total for each type  -->
-                <p>TODO total for each type</p>
+                <!-- computed property to display total for each type  -->
+                <ul class="list-group list-group-flush">
+                  <li class="list-group-item" v-for="hours, type in totalHoursByType">{{ type }}: {{ hours }}</li>
+                </ul>
 
             </div>
         </div>
@@ -114,18 +128,76 @@
           howLong: 1,
           type: 'sketching',
           digitalTraditional: 'traditional',
-          activityRecords: []
-          types: ['sketching', 'painting', 'drawing']
+          activityRecords: [],
+          types: ['sketching', 'painting', 'drawing'],
+          digital: 'Digital',
+          traditional: 'Traditional',
+          errors: []
+        },
+        computed: {
+          whenLocal() {
+            let date = new Date(this.when)
+            let timestamp = date.getTime() + (date.getTimezoneOffset() * 60 * 1000)
+            let localDate = new Date(timestamp)
+            return localDate
+          },
+          totalHours() {
+            let total = 0
+            if (this.activityRecords.length > 0) {
+              total = this.activityRecords.reduce(function (hoursAccumulator, currentRecord) {
+                return hoursAccumulator + currentRecord.howLong
+              }, 0)
+            }
+            return total
+          },
+          totalHoursByType() {
+            let hoursByType = {}
+            this.types.forEach(type => {
+              let totalForType = this.activityRecords
+                .filter(function (record) { return record.type === type })
+                .reduce(function (accumulator, current) { return accumulator + current.howLong }, 0)
+              hoursByType[type] = totalForType
+            })
+            return hoursByType
+          }
+        },
+        methods: {
+          submit() {
+            this.errors = []
+
+            if (this.whenLocal == 'Invalid Date' || this.whenLocal.getTime() > new Date().getTime()) {
+              console.log('Bad date');
+              this.errors.push('Select a valid date, today or in the past')
+            }
+
+            if (typeof (this.howLong) != "number" || this.howLong <= 0) {
+              console.log('Bad number');
+              this.errors.push('The number of hours must be a number greater than zero.')
+            }
+
+            if (this.errors.length == 0){
+              let record = {
+                when: this.whenLocal,
+                howLong: this.howLong,
+                type: this.type,
+                digitalTraditional: this.digitalTraditional
+              }
+              this.activityRecords.push(record)
+              this.activityRecords.sort(function (r1, r2) {
+                return r1.when.getTime() - r2.when.getTime()
+              })
+            }
+          }
         },
         filters: {
           lowercase(text) {
             return text.toLowerCase()
+          },
+          shortDateFormat(date) {
+            return new Intl.DateTimeFormat().format(date)
           }
         }
       })
-
     </script>
-
 </body>
-
 </html>
