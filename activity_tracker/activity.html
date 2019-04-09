@@ -101,12 +101,12 @@
                             <th>Completed?</th>
                         </tr>
                         <!-- display one table row for each activityRecord  -->
-                        <tr v-for="record in activityRecords">
+                        <tr v-for="record in activityRecords" v-bind:class="record.type">
                           <td>{{ record.when | shortDateFormat }}</td>
-                          <td>{{ record.howLong }}</td>
+                          <td>{{ record.howLong | trimHours }}</td>
                           <td>{{ record.type }}</td>
                           <td>{{ record.digitalTraditional }}</td>
-                          <td>{{ record.note }}</td>
+                          <td>{{ record.note | trimNote }}</td>
                           <td>{{ record.completed }}</td>
                         </tr>
                     </table>
@@ -120,11 +120,11 @@
 
             <div class="card-body">
                 <!-- use computed property to display total hours -->
-                <p>You have practiced a total of {{ totalHours }} hours, broken down as follows:</p>
+                <p>You have practiced a total of {{ totalHours | trimHours }} hours, broken down as follows:</p>
 
                 <!-- computed property to display total for each type  -->
                 <ul class="list-group list-group-flush">
-                  <li class="list-group-item" v-for="hours, type in totalHoursByType">{{ type }}: {{ hours }}</li>
+                  <li class="list-group-item" v-for="hours, type in totalHoursByType">{{ type }}: {{ hours | trimHours }}</li>
                 </ul>
 
             </div>
@@ -144,8 +144,8 @@
           digitalTraditional: 'traditional',
           activityRecords: [],
           types: ['sketching', 'painting', 'drawing'],
-          digital: 'Digital',
-          traditional: 'Traditional',
+          digital: 'digital',
+          traditional: 'traditional',
           note: '',
           completed: true,
           errors: []
@@ -213,6 +213,17 @@
           },
           shortDateFormat(date) {
             return new Intl.DateTimeFormat().format(date)
+          },
+          trimNote(note) {
+            if (note.length > 40) {
+              return note.substring(0, 40)
+            }
+            else {
+              return note
+            }
+          },
+          trimHours(hours) {
+            return hours.toFixed(2)
           }
         }
       })
